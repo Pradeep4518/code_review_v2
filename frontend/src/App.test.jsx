@@ -39,9 +39,9 @@ describe('RepoMind demo flow', () => {
     await screen.findByText('✓ Memory retained', {}, opts)
 
     click('Review With Hindsight')
-    await screen.findByText(/route handler is not thin/, {}, opts)
+    await screen.findByRole('heading', { name: /route handler is not thin/ }, opts)
 
-    const card = screen.getByText(/route handler is not thin/).closest('article')
+    const card = screen.getByRole('heading', { name: /route handler is not thin/ }).closest('article')
     fireEvent.click(within(card).getByRole('button', { name: 'Why?' }))
     const dialog = await screen.findByRole('dialog')
     expect(within(dialog).getByText('Why this was flagged')).toBeTruthy()

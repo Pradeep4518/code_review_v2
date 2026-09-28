@@ -1,0 +1,46 @@
+# Dependencies
+node_modules/
+frontend/node_modules/
+.venv/
+backend/.venv/
+venv/
+env/
+
+# Build and distribution
+dist/
+frontend/dist/
+build/
+
+# Python cache & test files
+__pycache__/
+backend/**/__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+backend/.pytest_cache/
+.coverage
+htmlcov/
+
+# Environment and sensitive keys
+.env
+.env.*
+*.env
+backend/.env
+!*.env.example
+!backend/.env.example
+
+# Large archives and temporary files
+*.zip
+c.zip
+*.tar.gz
+*.rar
+
+# Generated data
+backend/data/*.json
+!backend/data/.gitkeep
+
+# OS and IDE files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

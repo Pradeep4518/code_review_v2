@@ -1,0 +1,20 @@
+[
+ {
+  "id": "raw-sql",
+  "name": "Raw SQL Vulnerability",
+  "title": "Add user search endpoint",
+  "diff": "diff --git a/app/api/routes/users.py b/app/api/routes/users.py\n--- a/app/api/routes/users.py\n+++ b/app/api/routes/users.py\n@@ -1,4 +1,13 @@\n+from fastapi import APIRouter\n+from app.db import connection\n+\n+router = APIRouter()\n+\n+@router.get(\"/users/search\")\n+async def search_users(name: str):\n+    cursor = connection.cursor()\n+    query = f\"SELECT id, email FROM users WHERE name = '{name}'\"\n+    cursor.execute(query)\n+    return cursor.fetchall()\n"
+ },
+ {
+  "id": "async-console",
+  "name": "Async Error + Console Logging",
+  "title": "Load invoices on dashboard",
+  "diff": "diff --git a/web/src/api/invoices.js b/web/src/api/invoices.js\n--- a/web/src/api/invoices.js\n+++ b/web/src/api/invoices.js\n@@ -1,3 +1,9 @@\n+export async function loadInvoices(userId, authToken) {\n+  console.log(\"Fetching invoices for\", userId, \"token:\", authToken);\n+  const res = await fetch(`/api/v1/invoices?user=${userId}`);\n+  const data = await res.json();\n+  console.log(data);\n+  return data;\n+}\n"
+ },
+ {
+  "id": "clean",
+  "name": "Clean PR",
+  "title": "Add invoice lookup endpoint",
+  "diff": "diff --git a/app/api/routes/invoices.py b/app/api/routes/invoices.py\n--- a/app/api/routes/invoices.py\n+++ b/app/api/routes/invoices.py\n@@ -1,4 +1,22 @@\n+from fastapi import APIRouter, Depends, HTTPException\n+import structlog\n+from app.auth import get_current_user\n+from app.repository.invoices import InvoiceRepository\n+from app.schemas import InvoiceOut, User\n+\n+router = APIRouter(prefix=\"/api/v1\")\n+logger = structlog.get_logger()\n+\n+@router.get(\"/invoices/{invoice_id}\", response_model=InvoiceOut)\n+async def get_invoice(invoice_id: int, user: User = Depends(get_current_user), repo: InvoiceRepository = Depends()) -> InvoiceOut:\n+    try:\n+        invoice = await repo.get_for_user(invoice_id, user.id)\n+    except Exception as exc:\n+        logger.error(\"invoice_lookup_failed\", invoice_id=invoice_id)\n+        raise HTTPException(status_code=502, detail=\"lookup failed\") from exc\n+    return invoice\ndiff --git a/tests/test_invoices.py b/tests/test_invoices.py\n--- a/tests/test_invoices.py\n+++ b/tests/test_invoices.py\n@@ -0,0 +1,4 @@\n+def test_get_invoice_happy_path(client: TestClient) -> None:\n+    assert client.get(\"/api/v1/invoices/1\").status_code == 200\n+def test_get_invoice_failure_path(client: TestClient) -> None:\n+    assert client.get(\"/api/v1/invoices/999\").status_code == 404\n"
+ }
+]

@@ -24,6 +24,8 @@ DEFAULT_STATE: dict[str, Any] = {
     "usage": {},
     "local_memories": [],
     "rule_meta": {},  # normalised rule text -> {"owner", "reason"}
+    "rule_state": {},  # first-seen memory id -> lifecycle record (status, edits, history); see lifecycle.py
+    "deleted_rules": [],  # tombstones: {"ids": [...], "at", "by", "text"} - hides rules the provider could not delete
 }
 
 

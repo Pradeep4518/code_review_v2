@@ -48,3 +48,48 @@ class FeedbackRequest(BaseModel):
     comment: str = Field("", max_length=1000)
     teach_as_rule: bool = False
     category: Optional[Category] = None
+
+
+# ---------------------------------------------------------------- rule lifecycle (edit / retire / replace / delete)
+class EditRuleRequest(BaseModel):
+    rule: Optional[str] = Field(None, max_length=1000)
+    category: Optional[Category] = None
+    reason: Optional[str] = Field(None, max_length=500)
+    actor: str = Field("", max_length=80)     # who is making the change
+
+    @field_validator("rule")
+    @classmethod
+    def clean_rule(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            return v
+        v = " ".join(v.split())
+        if len(v) < 8:
+            raise ValueError("rule is too short")
+        return v
+
+
+class RetireRequest(BaseModel):
+    actor: str = Field("", max_length=80)
+    reason: str = Field("", max_length=500)   # why it is outdated
+
+
+class RestoreRequest(BaseModel):
+    actor: str = Field("", max_length=80)
+
+
+class SupersedeRequest(BaseModel):
+    rule: Optional[str] = Field(None, max_length=1000)   # write a brand-new replacement rule ...
+    new_rule_id: Optional[str] = Field(None, max_length=200)  # ... or point at a rule that already exists
+    category: Optional[Category] = None
+    reason: str = Field("", max_length=500)
+    actor: str = Field("", max_length=80)
+
+    @field_validator("rule")
+    @classmethod
+    def clean_rule(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            return v
+        v = " ".join(v.split())
+        if len(v) < 8:
+            raise ValueError("rule is too short")
+        return v

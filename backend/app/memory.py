@@ -95,6 +95,15 @@ class LocalMemoryProvider:
         mems = self.store.read(lambda s: list(s["local_memories"]))
         return [finish(dict(m)) for m in sorted(mems, key=lambda m: m["created_at"], reverse=True)]
 
+    async def delete(self, mem: dict[str, Any]) -> bool:
+        """Permanently remove one memory from the local demo store."""
+        def fn(s: dict[str, Any]) -> bool:
+            before = len(s["local_memories"])
+            s["local_memories"] = [m for m in s["local_memories"] if m["id"] != mem["id"]]
+            return len(s["local_memories"]) < before
+
+        return self.store.write(fn)
+
     async def ping(self) -> dict[str, Any]:
         return {"ok": True, "total": len(self.store.read(lambda s: s["local_memories"]))}
 
@@ -189,6 +198,7 @@ class HindsightMemoryProvider:
             finish(
                 {
                     "id": it["document_id"],
+                    "document_id": it["document_id"],
                     "text": r["rule"],
                     "category": r["category"],
                     "source": r.get("source", "developer"),
@@ -219,6 +229,7 @@ class HindsightMemoryProvider:
                 "reason": meta.get("reason") or "",
                 "created_at": u.get("date") or u.get("mentioned_at") or u.get("occurred_start"),
                 "fact_type": u.get("fact_type") or u.get("type"),
+                "document_id": u.get("document_id"),
             }
         )
 
@@ -233,6 +244,22 @@ class HindsightMemoryProvider:
         mems = [self._from_unit(u) for u in data.get("items", [])]
         self._list_cache = (time.time(), mems, data.get("total", len(mems)))
         return mems
+
+    async def delete(self, mem: dict[str, Any]) -> bool:
+        """Delete the Hindsight document behind a rule (cascades to its extracted memory units).
+
+        DELETE /v1/default/banks/{bank_id}/documents/{document_id}. Returns False when the document id
+        is unknown; raises MemoryProviderError on an API failure so the caller can report it honestly.
+        """
+        doc_id = mem.get("document_id")
+        if not doc_id:
+            return False
+        resp = await self._request("DELETE", f"/v1/default/banks/{self.bank}/documents/{doc_id}")
+        if resp.status_code == 404:
+            return True  # already gone
+        self._check(resp, "delete the memory")
+        self._list_cache = None
+        return True
 
     async def total(self) -> int:
         await self.list()

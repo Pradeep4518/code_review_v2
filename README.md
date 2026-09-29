@@ -77,6 +77,21 @@ Developer feedback ◄── Memory-aware review ◄── Groq ◄── Releva
 4. Relevant memories are ranked, passed to the reviewer, cited on issues; usage is counted locally (`times applied`, `last used`).
 5. Developer feedback becomes new memory. Loop.
 
+### When a team's standards change (edit, retire, replace, delete)
+
+Rules are not write-once. In **Memory Bank**, open any rule to see who taught it, when, and its full change history, then:
+
+| Action | What happens |
+|---|---|
+| **Edit** | Fix wording, category or reason. Reviews use the new wording immediately; the change is logged with who/when. |
+| **Replace with newer rule** | Writes the new rule; the old one becomes *Replaced* (kept in history, linked both ways) and reviews only use the new one. After teaching a rule, RepoMind also offers older rules on the same topic to replace. |
+| **Retire** | The rule stops influencing reviews, the playbook, DNA and counts, but stays under *Retired & replaced* and can be **restored**. |
+| **Delete** | Permanent. On Hindsight this calls `DELETE /v1/default/banks/{bank}/documents/{document_id}`. If Hindsight cannot delete its copy the rule is still hidden locally and the UI says so. |
+
+**Newest rule wins.** If two recalled rules conflict and both have a date, the reviewer applies the newer one, never cites the older one, and the review shows *"Conflict resolved: newest rule applied"* with both rules and dates. Editing a rule's wording, or replacing it, makes it the newest. Conflicts with identical or missing dates are still surfaced for a human to decide (the old behaviour).
+
+Implementation note: lifecycle state (status, edits, history, who changed what) lives in a small local ledger (`rule_state` in `backend/data/state.json`, see `backend/app/lifecycle.py`) layered on top of whichever provider is active, so it behaves the same on Hindsight and demo memory. Edited wording is applied when a rule is shown or sent to the reviewer; Hindsight's own stored copy keeps the original wording (Hindsight is still used for recall). Enter your name at the top of the Memory Bank so changes are attributed to you.
+
 ## Architecture
 
 ```mermaid
@@ -186,7 +201,11 @@ Fallback data is **never labelled Hindsight** — `memory_provider` is `hindsigh
 | `POST /api/compare` | `{code_diff, pr_title, review_mode}` → `{plain, memory, delta}`: both reviews plus what memory added |
 | `GET /api/impact` | the five pain-point dashboards (speed, repeat mistakes, knowledge, consistency, generic vs team) |
 | `GET /api/playbook` | `{filename, count, markdown}`: the team playbook |
-| `GET /api/memories?q=&category=` | memories, per-category counts, usage |
+| `GET /api/memories?q=&category=&status=` | rules (`status` = `active` default, `inactive`, `all`), per-category counts, usage, `taught by / when`, change history |
+| `PATCH /api/memories/{id}` | `{rule?, category?, reason?, actor}` → edit a rule |
+| `POST /api/memories/{id}/retire`, `/restore` | `{actor, reason?}` → stop / resume using a rule |
+| `POST /api/memories/{id}/supersede` | `{rule \| new_rule_id, category?, reason?, actor}` → replace an old rule with a newer one |
+| `DELETE /api/memories/{id}?actor=` | permanently delete a rule |
 | `POST /api/seed` | seed 9 team conventions |
 | `GET /api/history`, `GET /api/history/{id}` | review history / reopen |
 | `POST /api/feedback` | `{review_id, issue_id, feedback_type, comment, teach_as_rule}` |

@@ -39,9 +39,9 @@ describe('RepoMind demo flow', () => {
     await screen.findByText('✓ Memory retained', {}, opts)
 
     click('Review With Hindsight')
-    await screen.findByRole('heading', { name: /route handler is not thin/ }, opts)
+    await screen.findByText(/route handler is not thin/, {}, opts)
 
-    const card = screen.getByRole('heading', { name: /route handler is not thin/ }).closest('article')
+    const card = screen.getByText(/route handler is not thin/).closest('article')
     fireEvent.click(within(card).getByRole('button', { name: 'Why?' }))
     const dialog = await screen.findByRole('dialog')
     expect(within(dialog).getByText('Why this was flagged')).toBeTruthy()
@@ -92,6 +92,55 @@ describe('RepoMind demo flow', () => {
     click('Memory Bank')
     await screen.findAllByText(/Taught by Priya/, {}, opts)
     expect(screen.getAllByText(/double-charged customers/).length).toBeGreaterThan(0)
+  }, 90000)
+
+  it('lets the team edit, replace, retire, restore and delete rules in the Memory Bank', async () => {
+    await realFetch(`${API}/api/reset-demo`, { method: 'POST' })
+    render(<App />)
+    await screen.findByText('DEMO MEMORY MODE', {}, opts)
+    click('Seed team knowledge')
+    const count = () => screen.getByText('Memories').nextSibling.textContent
+    await waitFor(() => expect(count()).toBe('9'), opts)
+
+    click('Memory Bank')
+    fireEvent.change(await screen.findByLabelText('Your name', {}, opts), { target: { value: 'Asha' } })
+    fireEvent.click(await screen.findByText(/Never log authorization headers/, {}, opts))
+    let drawer = await screen.findByRole('dialog', { name: 'Memory details' })
+    expect(within(drawer).getAllByText('Seed data').length).toBeGreaterThan(0) // who taught it
+
+    // edit
+    fireEvent.click(within(drawer).getByRole('button', { name: 'Edit' }))
+    fireEvent.change(within(drawer).getByLabelText('Rule'), { target: { value: 'Never log authorization headers, tokens, passwords or session cookies.' } })
+    fireEvent.click(within(drawer).getByRole('button', { name: 'Save changes' }))
+    await within(await screen.findByRole('dialog', { name: 'Memory details' })).findByText(/Edited by/, {}, opts)
+    expect((await screen.findAllByText(/session cookies/, {}, opts)).length).toBeGreaterThan(0)
+
+    // replace with a newer rule: the old one moves to "Retired & replaced"
+    drawer = screen.getByRole('dialog', { name: 'Memory details' })
+    fireEvent.click(within(drawer).getByRole('button', { name: 'Replace with newer rule' }))
+    fireEvent.change(within(drawer).getByLabelText('New rule'), { target: { value: 'Never log request bodies, headers, tokens or passwords.' } })
+    fireEvent.click(within(drawer).getByRole('button', { name: 'Replace rule' }))
+    await screen.findByText(/Rule replaced/, {}, opts)
+    await waitFor(() => expect(count()).toBe('9'), opts)
+    fireEvent.click(screen.getByRole('button', { name: /Retired & replaced/ }))
+    expect((await screen.findAllByText(/session cookies/, {}, opts)).length).toBeGreaterThan(0)
+    expect((await screen.findAllByText('Replaced', {}, opts)).length).toBeGreaterThan(0)
+
+    // retire the new rule, then restore it
+    fireEvent.click(screen.getByRole('button', { name: /^Active/ }))
+    fireEvent.click(await screen.findByText(/Never log request bodies/, {}, opts))
+    drawer = await screen.findByRole('dialog', { name: 'Memory details' })
+    fireEvent.click(within(drawer).getByRole('button', { name: 'Retire' }))
+    fireEvent.click(within(drawer).getByRole('button', { name: 'Retire rule' }))
+    await waitFor(() => expect(count()).toBe('8'), opts)
+    fireEvent.click(await within(screen.getByRole('dialog', { name: 'Memory details' })).findByRole('button', { name: 'Restore rule' }, opts))
+    await waitFor(() => expect(count()).toBe('9'), opts)
+
+    // delete permanently (asks first)
+    fireEvent.click(within(screen.getByRole('dialog', { name: 'Memory details' })).getByRole('button', { name: 'Delete…' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Delete permanently' }))
+    await waitFor(() => expect(count()).toBe('8'), opts)
+    expect(screen.queryByRole('dialog', { name: 'Memory details' })).toBeNull()
   }, 90000)
 
   it('does not crash when the API is unreachable', async () => {

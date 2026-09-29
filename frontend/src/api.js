@@ -1,8 +1,10 @@
-// Thin client for the RepoMind backend. All calls go through /api (proxied in dev).
+// Thin client for the RepoMind backend. All calls go through /api (proxied in dev or rewrites).
+const API_BASE = (import.meta.env?.VITE_API_BASE_URL || '/api').replace(/\/+$/, '')
+
 async function request(path, options = {}) {
   let res
   try {
-    res = await fetch(`/api${path}`, {
+    res = await fetch(`${API_BASE}${path}`, {
       headers: { 'Content-Type': 'application/json' },
       ...options,
       body: options.body ? JSON.stringify(options.body) : undefined,

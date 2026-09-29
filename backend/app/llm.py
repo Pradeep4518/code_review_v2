@@ -26,8 +26,11 @@ cite the relevant memory.
 Distinguish general best practices from
 repository-specific conventions.
 
-If memories conflict, explain the conflict
-instead of silently choosing one."""
+Each memory shows the date it was added or last
+changed. If two memories conflict, follow the newer
+one and say in the issue that it overrides an older
+rule. If you cannot tell which is newer, explain
+the conflict instead of silently choosing one."""
 
 SYSTEM_STATELESS = (
     "You are a generic AI code reviewer. You have no knowledge of this team's conventions, repository, "
@@ -74,7 +77,8 @@ def build_messages(pr_title: str, code_diff: str, mode: str, memories: list[dict
         lines = []
         for n, m in enumerate(memories, 1):
             idmap[f"M{n}"] = m["id"]
-            lines.append(f"[M{n}] ({m['category']}) {m['text']}")
+            when = str(m.get("effective_at") or m.get("created_at") or "")[:10]
+            lines.append(f"[M{n}] ({m['category']}{', added ' + when if when else ''}) {m['text']}")
         parts.append("Team memories recalled from Hindsight:\n" + "\n".join(lines))
     elif memories is not None:
         parts.append("Team memories recalled from Hindsight: none relevant.")

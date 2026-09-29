@@ -11,7 +11,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from .config import get_settings
 from .memory import HindsightMemoryProvider, MemoryProviderError
-from .models import FeedbackRequest, ReviewRequest, TeachRequest
+from .models import EditRuleRequest, FeedbackRequest, RestoreRequest, RetireRequest, ReviewRequest, SupersedeRequest, TeachRequest
 from .service import Service
 from .store import Store
 
@@ -73,8 +73,37 @@ def create_app(hindsight: HindsightMemoryProvider | None = None) -> FastAPI:
         return await svc.teach(req)
 
     @app.get("/api/memories")
-    async def memories(q: str = "", category: str = ""):
-        return await svc.memories(q[:200], category[:40])
+    async def memories(q: str = "", category: str = "", status: str = "active"):
+        """status: active (default) | inactive (retired or replaced) | all"""
+        return await svc.memories(q[:200], category[:40], status if status in ("active", "inactive", "all") else "active")
+
+    async def _lifecycle(call):
+        try:
+            return await call
+        except KeyError:
+            raise HTTPException(404, "Rule not found")
+        except ValueError as e:
+            raise HTTPException(422, str(e))
+
+    @app.patch("/api/memories/{mem_id}")
+    async def edit_memory(mem_id: str, req: EditRuleRequest):
+        return await _lifecycle(svc.edit_memory(mem_id, req))
+
+    @app.post("/api/memories/{mem_id}/retire")
+    async def retire_memory(mem_id: str, req: RetireRequest):
+        return await _lifecycle(svc.retire_memory(mem_id, req))
+
+    @app.post("/api/memories/{mem_id}/restore")
+    async def restore_memory(mem_id: str, req: RestoreRequest):
+        return await _lifecycle(svc.restore_memory(mem_id, req))
+
+    @app.post("/api/memories/{mem_id}/supersede")
+    async def supersede_memory(mem_id: str, req: SupersedeRequest):
+        return await _lifecycle(svc.supersede_memory(mem_id, req))
+
+    @app.delete("/api/memories/{mem_id}")
+    async def delete_memory(mem_id: str, actor: str = ""):
+        return await _lifecycle(svc.delete_memory(mem_id, actor[:80]))
 
     @app.post("/api/seed")
     async def seed():

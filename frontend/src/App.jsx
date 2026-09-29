@@ -200,7 +200,7 @@ export default function App() {
             </div>
           )}
           {view === 'impact' && <Impact refreshKey={refreshKey} onError={fail} onToast={setToast} />}
-          {view === 'memory' && <MemoryBank refreshKey={refreshKey} onError={fail} onSeeded={seed} />}
+          {view === 'memory' && <MemoryBank refreshKey={refreshKey} onError={fail} onSeeded={seed} onChanged={refreshHealth} />}
           {view === 'dna' && <RepoDNA refreshKey={refreshKey} />}
           {view === 'history' && <History refreshKey={refreshKey} onOpen={openHistory} />}
           {view === 'analytics' && <Analytics refreshKey={refreshKey} />}

@@ -26,6 +26,15 @@ export default function TeachCard({ prefill, memoryCount, onTaught, onSeeded, on
     } catch (err) { onError(err.message) } finally { setBusy(false) }
   }
 
+  const replace = async (oldId) => {
+    setBusy(true)
+    try {
+      const res = await api.supersedeMemory(oldId, { new_rule_id: done.memory.id, actor: owner })
+      setDone({ ...done, related: [], replacedText: res.superseded.text })
+      onTaught(res)
+    } catch (err) { onError(err.message) } finally { setBusy(false) }
+  }
+
   const seed = async () => {
     setBusy(true)
     try { const r = await api.seed(); onSeeded(r) } catch (err) { onError(err.message) } finally { setBusy(false) }
@@ -66,6 +75,20 @@ export default function TeachCard({ prefill, memoryCount, onTaught, onSeeded, on
           <strong>✓ {done.duplicate ? 'Already remembered' : 'Memory retained'}</strong>
           <p className="small">{done.duplicate ? 'This rule is already in memory.' : 'Memory will influence future reviews.'} Stored via {done.provider === 'hindsight' ? 'Hindsight' : 'demo memory (fallback)'}.</p>
           {done.warning && <p className="small">{done.warning}</p>}
+          {done.replacedText && <p className="small">Replaced the older rule “{done.replacedText}”. It is kept in history and no longer used in reviews.</p>}
+          {done.related?.length > 0 && (
+            <div className="related">
+              <p className="small"><strong>Does this replace an older rule?</strong> If the standard changed, retire the old one so reviews follow the new one.</p>
+              <ul className="plain">
+                {done.related.map((r) => (
+                  <li key={r.id}>
+                    <span className="small">“{r.text}”</span>
+                    <button type="button" className="btn sm" disabled={busy} onClick={() => replace(r.id)}>Replace this rule</button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
         </div>
       )}
     </section>

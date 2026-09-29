@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import IssueCard from './IssueCard.jsx'
-import { providerName } from '../util.js'
+import { fmtTime, providerName } from '../util.js'
 
 function Skeleton() {
   return (
@@ -101,16 +101,31 @@ export default function ReviewPanel({ variant, data, loading, decisions, onWhy, 
           )}
 
           {memory && data.conflicts.map((c, i) => (
-            <div key={i} className="conflict" role="alert">
-              <div className="conflict-title">Memory conflict</div>
-              <p>Two team conventions appear relevant.</p>
-              {c.memory_ids.map((id, k) => {
-                const m = data.memories.find((x) => x.id === id)
-                return m ? <p key={id} className="conflict-rule"><strong>Rule {k ? 'B' : 'A'}</strong> “{m.text}”</p> : null
-              })}
-              <p className="small">{c.explanation}</p>
-              <button type="button" className="btn memory sm" onClick={() => onTeachException(c, data)}>Teach Exception</button>
-            </div>
+            c.resolution === 'newest_wins' ? (
+              <div key={i} className="conflict resolved" role="status">
+                <div className="conflict-title">Conflict resolved: newest rule applied</div>
+                {c.memory_ids.map((id, k) => {
+                  const m = data.memories.find((x) => x.id === id)
+                  return m ? (
+                    <p key={id} className={`conflict-rule ${id === c.loser_id ? 'set-aside' : ''}`}>
+                      <strong>{id === c.winner_id ? 'Applied' : 'Set aside'}</strong> “{m.text}”{fmtTime(m.effective_at) ? ` (${fmtTime(m.effective_at)})` : ''}
+                    </p>
+                  ) : null
+                })}
+                <p className="small">{c.explanation}</p>
+              </div>
+            ) : (
+              <div key={i} className="conflict" role="alert">
+                <div className="conflict-title">Memory conflict</div>
+                <p>Two team conventions appear relevant.</p>
+                {c.memory_ids.map((id, k) => {
+                  const m = data.memories.find((x) => x.id === id)
+                  return m ? <p key={id} className="conflict-rule"><strong>Rule {k ? 'B' : 'A'}</strong> “{m.text}”</p> : null
+                })}
+                <p className="small">{c.explanation}</p>
+                <button type="button" className="btn memory sm" onClick={() => onTeachException(c, data)}>Teach Exception</button>
+              </div>
+            )
           ))}
 
           {data.clean && (
